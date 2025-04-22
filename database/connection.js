@@ -53,9 +53,15 @@ const conectarDB = async () => {
         const connection = await pool.getConnection();
         console.log(`Conexión exitosa a la base de datos MySQL (${dbConfig.host}:${dbConfig.port})`);
         
-        // Ejecutar script para crear tabla de sesiones si no existe
+        // Crear tabla de sesiones si no existe directamente con consulta SQL
         try {
-            const sessionSetupSQL = fs.readFileSync(path.join(__dirname, '../setup_sessions_table.sql'), 'utf8');
+            const sessionSetupSQL = `CREATE TABLE IF NOT EXISTS sessions (
+                session_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+                expires INT(11) UNSIGNED NOT NULL,
+                data MEDIUMTEXT COLLATE utf8mb4_bin,
+                PRIMARY KEY (session_id)
+            ) ENGINE=InnoDB;`;
+            
             await connection.query(sessionSetupSQL);
             console.log('Tabla de sesiones verificada/creada');
         } catch (setupError) {
@@ -83,9 +89,15 @@ const conectarDB = async () => {
                 const newConnection = await pool.getConnection();
                 console.log(`Conexión exitosa a la base de datos MySQL (${dbConfig.host}:3306)`);
                 
-                // Ejecutar script para crear tabla de sesiones si no existe
+                // Crear tabla de sesiones si no existe directamente con consulta SQL
                 try {
-                    const sessionSetupSQL = fs.readFileSync(path.join(__dirname, '../setup_sessions_table.sql'), 'utf8');
+                    const sessionSetupSQL = `CREATE TABLE IF NOT EXISTS sessions (
+                        session_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+                        expires INT(11) UNSIGNED NOT NULL,
+                        data MEDIUMTEXT COLLATE utf8mb4_bin,
+                        PRIMARY KEY (session_id)
+                    ) ENGINE=InnoDB;`;
+                    
                     await newConnection.query(sessionSetupSQL);
                     console.log('Tabla de sesiones verificada/creada');
                 } catch (setupError) {
