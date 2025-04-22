@@ -1,0 +1,210 @@
+<div class="ticket-container">
+    <div class="ticket-header text-center">
+        <h3>Comprobante de Depósito en Caja Fuerte</h3>
+        <p class="mb-1">{{formatDateTime now}}</p>
+        <hr>
+    </div>
+    <div class="ticket-content">
+        <div class="ticket-section">
+            <h5>Información del Depósito</h5>
+            <p><strong>Número de Depósito:</strong> D-{{deposito.id}}</p>
+            <p><strong>Fecha del Depósito:</strong> {{formatDateTime deposito.fecha_deposito}}</p>
+            <p><strong>Realizado por:</strong> {{deposito.nombre_usuario}}</p>
+        </div>
+        
+        <div class="ticket-section">
+            <h5>Período del Corte</h5>
+            <p><strong>Desde:</strong> {{formatDateTime deposito.fecha_inicio_corte}}</p>
+            <p><strong>Hasta:</strong> {{formatDateTime deposito.fecha_fin_corte}}</p>
+        </div>
+
+        <div class="ticket-section">
+            <h5>Detalle por Tipo de Vehículo</h5>
+            <table class="ticket-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cant.</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each movimientosPorTipo}}
+                    <tr>
+                        <td>{{tipo_vehiculo}}</td>
+                        <td>{{cantidad}}</td>
+                        <td>{{formatCurrency total}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="ticket-section">
+            <h5>Detalle de Movimientos</h5>
+            <table class="ticket-table">
+                <thead>
+                    <tr>
+                        <th>Placa</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each movimientos}}
+                    <tr>
+                        <td>{{placa}}</td>
+                        <td>{{tipo_vehiculo}}</td>
+                        <td>{{formatCurrency valor_total}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-end"><strong>Total:</strong></td>
+                        <td><strong>{{formatCurrency deposito.monto_efectivo}}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{#if deposito.observaciones}}
+        <div class="ticket-section">
+            <h5>Observaciones</h5>
+            <p>{{deposito.observaciones}}</p>
+        </div>
+        {{/if}}
+
+        <div class="ticket-section firma-section">
+            <div class="firma">
+                <p>_____________________</p>
+                <p>Firma del Cajero</p>
+            </div>
+            <div class="firma">
+                <p>_____________________</p>
+                <p>Firma del Supervisor</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ticket-footer text-center">
+        <p>Generado por Sistema de Parqueadero</p>
+    </div>
+    
+    <div class="no-print text-center mt-3">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+        <a href="/parqueadero" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<style>
+    /* Estilos generales */
+    .ticket-container {
+        max-width: 80mm;
+        margin: 0 auto;
+        font-family: Arial, sans-serif;
+        font-size: 10px;
+        line-height: 1.2;
+    }
+    
+    .ticket-header {
+        margin-bottom: 8px;
+    }
+    
+    .ticket-header h3 {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+    
+    .ticket-section {
+        margin-bottom: 8px;
+    }
+    
+    .ticket-section h5 {
+        font-size: 10px;
+        font-weight: bold;
+        margin-bottom: 4px;
+        border-bottom: 1px dashed #ccc;
+    }
+    
+    .ticket-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8px;
+    }
+    
+    .ticket-table th, .ticket-table td {
+        padding: 2px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .ticket-table th {
+        font-weight: bold;
+    }
+    
+    .ticket-table tfoot {
+        font-weight: bold;
+    }
+    
+    .firma-section {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 15px;
+    }
+    
+    .firma {
+        width: 45%;
+        text-align: center;
+    }
+    
+    .ticket-footer {
+        margin-top: 10px;
+        padding-top: 5px;
+        border-top: 1px dashed #ccc;
+    }
+    
+    hr {
+        border-top: 1px dashed #ccc;
+        margin: 5px 0;
+    }
+    
+    /* Configuración específica para impresión */
+    @page {
+        size: 80mm 210mm;
+        margin: 5mm;
+    }
+    
+    @media print {
+        body {
+            width: 80mm;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .ticket-container {
+            width: 100%;
+        }
+        
+        .no-print {
+            display: none !important;
+        }
+        
+        /* Evitar saltos de página en medio de secciones */
+        .ticket-section {
+            page-break-inside: avoid;
+        }
+    }
+</style>
+
+<script>
+    // Auto imprimir después de 1 segundo
+    setTimeout(function() {
+        window.print();
+    }, 1000);
+</script> 
