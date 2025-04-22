@@ -5,10 +5,7 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const flash = require('connect-flash');
 const path = require('path');
-require('dotenv').config();
-const fs = require('fs');
-const morgan = require('morgan');
-const { conectarDB, executeQuery, dbConfig } = require('./database/connection');
+const { conectarDB, executeQuery } = require('./database/connection');
 const usuariosRoutes = require('./routes/usuarios');
 const rolesRoutes = require('./routes/roles');
 const authRoutes = require('./routes/auth');
@@ -24,17 +21,17 @@ const facturasExcelRoutes = require('./routes/facturasExcelRoutes');
 
 const app = express();
 
-// Crear directorio para logs si no existe
-const logsDir = path.join(__dirname, 'logs');
-if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir);
+// Configuración de proxy en producción
+if (process.env.TRUST_PROXY === '1') {
+    app.set('trust proxy', 1);
+    console.log('Configuración de proxy habilitada');
 }
 
-// Configurar logger
-const accessLogStream = fs.createWriteStream(path.join(logsDir, 'access.log'), { flags: 'a' });
-app.use(morgan('combined', { stream: accessLogStream }));
-// Logger para errores de autenticación
-const authLogStream = fs.createWriteStream(path.join(logsDir, 'auth.log'), { flags: 'a' });
+// Configuración de rutas base
+const basePath = process.env.BASE_PATH || '';
+if (basePath) {
+    console.log(`Base path configurado: ${basePath}`);
+}
 
 // Configuración de archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
@@ -109,59 +106,36 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json({ limit: '10mb' }));
 
 // Configuración de sesiones
-const sessionSecret = process.env.SESSION_SECRET || 'tu_secreto_aqui';
-
-// Configuración de opciones de sesión
-const sessionConfig = {
-    key: 'parqueadero_session',
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        sameSite: 'lax'
+const options = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'parqueadero',
+    createDatabaseTable: true,
+    schema: {
+        tableName: 'sessions',
+        columnNames: {
+            session_id: 'session_id',
+            expires: 'expires',
+            data: 'data'
+        }
     }
 };
 
-// En producción, configurar el proxy y usar MySQL para almacenamiento de sesiones
-if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1); // Confiar en el primer proxy
-    console.log('Modo producción activado - Configuración de sesión segura habilitada');
-    
-    // Opciones para MySQL session store
-    const options = {
-        host: dbConfig.host,
-        port: dbConfig.port,
-        user: dbConfig.user,
-        password: dbConfig.password,
-        database: dbConfig.database,
-        createDatabaseTable: true,
-        schema: {
-            tableName: 'sessions',
-            columnNames: {
-                session_id: 'session_id',
-                expires: 'expires',
-                data: 'data'
-            }
-        }
-    };
-    
-    // Crear tabla de sesiones si no existe
-    console.log('Configurando almacenamiento de sesiones en MySQL');
-    sessionConfig.store = new MySQLStore(options);
-    
-    fs.appendFileSync(
-        path.join(logsDir, 'session.log'),
-        `${new Date().toISOString()} - Sesiones configuradas con MySQL Store: ${JSON.stringify({
-            host: options.host,
-            database: options.database,
-            tableName: options.schema.tableName
-        })}\n`
-    );
-}
+const sessionStore = new MySQLStore(options);
 
-app.use(session(sessionConfig));
+app.use(session({
+    key: 'parqueadero_session',
+    secret: process.env.SESSION_SECRET || 'tu_secreto_aqui',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: false, // Cambiar a false para permitir conexiones no HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
 
 // Configuración de Flash Messages
 app.use(flash());
@@ -172,23 +146,6 @@ app.use((req, res, next) => {
     res.locals.permisos = req.session.permisos;
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
-    
-    // Log para seguimiento de sesión
-    const sessionInfo = {
-        sessionID: req.sessionID,
-        tieneUsuario: !!req.session.usuario,
-        path: req.path
-    };
-    
-    if (req.path !== '/login' && req.path !== '/logout') {
-        console.log(`[${new Date().toISOString()}] Ruta: ${req.path}, Usuario en sesión: ${req.session.usuario ? req.session.usuario.documento : 'No autenticado'}, SessionID: ${req.sessionID}`);
-        
-        fs.appendFileSync(
-            path.join(logsDir, 'session.log'),
-            `${new Date().toISOString()} - Sesión: ${JSON.stringify(sessionInfo)}\n`
-        );
-    }
-    
     next();
 });
 
@@ -220,7 +177,6 @@ app.get('/', (req, res) => {
 
 // Ruta del dashboard
 app.get('/dashboard', verificarAutenticacion, (req, res) => {
-    console.log(`Renderizando dashboard para usuario: ${req.session.usuario.documento}, SessionID: ${req.sessionID}`);
     res.render('dashboard', {
         usuario: req.session.usuario
     });
@@ -229,8 +185,6 @@ app.get('/dashboard', verificarAutenticacion, (req, res) => {
 // Puerto
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT} en modo ${process.env.NODE_ENV || 'desarrollo'}`);
-    console.log(`Session cookie secure: ${sessionConfig.cookie.secure}`);
-    console.log(`Almacenamiento de sesiones: ${sessionConfig.store ? 'MySQL' : 'MemoryStore'}`);
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
     conectarDB();
 }); 
