@@ -63,19 +63,48 @@ const authController = {
                 rol_nombre: usuario.rol_nombre
             };
 
-            // Cargar los permisos del usuario
+            // Cargar los permisos del usuario con información adicional
             const [permisos] = await connection.execute(`
-                SELECT DISTINCT m.nombre as modulo, m.ruta, m.icono
+                SELECT DISTINCT 
+                    m.id as modulo_id,
+                    m.nombre as modulo, 
+                    m.ruta, 
+                    m.icono,
+                    m.grupo,
+                    m.orden
                 FROM permisos_roles pr
                 INNER JOIN modulos m ON pr.modulo_id = m.id
                 WHERE pr.rol_id = ?
                 AND pr.estado = 1 
                 AND m.estado = 1
-                ORDER BY m.nombre
+                ORDER BY m.orden, m.nombre
             `, [usuario.rol_id]);
 
             req.session.permisos = permisos;
             console.log(`Inicio de sesión exitoso para ${usuario.nombres} ${usuario.apellidos} con ${permisos.length} permisos`);
+            
+            // Obtener los permisos específicos (acciones por módulo)
+            const [permisosDetallados] = await connection.execute(`
+                SELECT 
+                    pr.id,
+                    pr.rol_id,
+                    pr.modulo_id,
+                    pr.accion_id,
+                    m.nombre as modulo_nombre,
+                    a.nombre as accion_nombre,
+                    a.codigo as accion_codigo,
+                    pr.estado
+                FROM permisos_roles pr
+                INNER JOIN modulos m ON pr.modulo_id = m.id
+                INNER JOIN acciones a ON pr.accion_id = a.id
+                WHERE pr.rol_id = ?
+                AND pr.estado = 1
+                AND m.estado = 1
+                AND a.estado = 1
+            `, [usuario.rol_id]);
+
+            req.session.permisosDetallados = permisosDetallados;
+            console.log(`Permisos detallados cargados: ${permisosDetallados.length}`);
             
             // Forzar guardado de sesión antes de redireccionar
             req.session.save(err => {

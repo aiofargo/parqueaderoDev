@@ -129,7 +129,7 @@ const conectarDB = async () => {
 const corregirCodificacionTablas = async (connection) => {
     try {
         // Lista de tablas a verificar
-        const tablas = ['modulos', 'roles', 'usuarios', 'permisos_roles'];
+        const tablas = ['modulos', 'roles', 'usuarios', 'permisos_roles', 'acciones'];
         
         for (const tabla of tablas) {
             try {
@@ -155,32 +155,103 @@ const corregirCodificacionTablas = async (connection) => {
             }
         }
         
-        // Verificar y corregir orden de los módulos
+        // Corregir nombres de módulos con problemas de tildes
         try {
+            console.log("Iniciando corrección de nombres de módulos...");
             await connection.query(`
                 UPDATE modulos 
                 SET 
                   nombre = REPLACE(nombre, 'Configuracin', 'Configuración'),
                   nombre = REPLACE(nombre, 'Gestin', 'Gestión'),
                   nombre = REPLACE(nombre, 'Administracin', 'Administración'),
-                  nombre = REPLACE(nombre, 'Vehiculos', 'Vehículos')
+                  nombre = REPLACE(nombre, 'Vehiculos', 'Vehículos'),
+                  nombre = REPLACE(nombre, 'Electrnicas', 'Electrónicas'),
+                  nombre = REPLACE(nombre, 'Operacin', 'Operación')
                 WHERE 
                   nombre LIKE '%Configuracin%' 
                   OR nombre LIKE '%Gestin%'
                   OR nombre LIKE '%Administracin%'
                   OR nombre LIKE '%Vehiculos%'
+                  OR nombre LIKE '%Electrnicas%'
+                  OR nombre LIKE '%Operacin%'
             `);
+            console.log("Nombres de módulos corregidos");
             
-            // Actualizar orden de los módulos
+            // Actualizar orden de los módulos si no está definido
             await connection.query(`
                 UPDATE modulos 
                 SET orden = id 
                 WHERE orden IS NULL OR orden = 0
             `);
+            console.log("Orden de módulos actualizado");
             
-            console.log('Nombres y orden de módulos corregidos');
+            // Asegurarse de que los módulos estén activos
+            await connection.query(`
+                UPDATE modulos 
+                SET estado = 1 
+                WHERE estado IS NULL OR estado = 0
+            `);
+            console.log("Estado de módulos activado");
+            
+            // Verificar si el rol Super Administrador existe
+            const [superAdmin] = await connection.query(`
+                SELECT id FROM roles WHERE nombre = 'SUPER ADMINISTRADOR'
+            `);
+            
+            if (superAdmin.length > 0) {
+                const superAdminId = superAdmin[0].id;
+                console.log(`Rol Super Administrador encontrado, ID: ${superAdminId}`);
+                
+                // Obtener todos los módulos del sistema
+                const [modulos] = await connection.query(`
+                    SELECT id FROM modulos WHERE estado = 1
+                `);
+                console.log(`Se encontraron ${modulos.length} módulos activos`);
+                
+                // Obtener todas las acciones del sistema
+                const [acciones] = await connection.query(`
+                    SELECT id FROM acciones WHERE estado = 1
+                `);
+                console.log(`Se encontraron ${acciones.length} acciones activas`);
+                
+                // Asignar todos los permisos al Super Administrador
+                for (const modulo of modulos) {
+                    for (const accion of acciones) {
+                        try {
+                            // Verificar si ya existe el permiso
+                            const [permisoExistente] = await connection.query(`
+                                SELECT id FROM permisos_roles 
+                                WHERE rol_id = ? AND modulo_id = ? AND accion_id = ?
+                            `, [superAdminId, modulo.id, accion.id]);
+                            
+                            if (permisoExistente.length === 0) {
+                                // Crear el permiso si no existe
+                                await connection.query(`
+                                    INSERT INTO permisos_roles 
+                                    (rol_id, modulo_id, accion_id, estado) 
+                                    VALUES (?, ?, ?, 1)
+                                `, [superAdminId, modulo.id, accion.id]);
+                                console.log(`Permiso creado: Rol ${superAdminId}, Módulo ${modulo.id}, Acción ${accion.id}`);
+                            } else {
+                                // Activar el permiso si existe pero está desactivado
+                                await connection.query(`
+                                    UPDATE permisos_roles 
+                                    SET estado = 1 
+                                    WHERE rol_id = ? AND modulo_id = ? AND accion_id = ? AND estado = 0
+                                `, [superAdminId, modulo.id, accion.id]);
+                            }
+                        } catch (permError) {
+                            console.error(`Error al crear permiso: Rol ${superAdminId}, Módulo ${modulo.id}, Acción ${accion.id}`, permError);
+                        }
+                    }
+                }
+                console.log("Permisos del Super Administrador actualizados");
+            } else {
+                console.log("No se encontró el rol Super Administrador");
+            }
+            
         } catch (error) {
-            console.error('Error al corregir nombres y orden de módulos:', error);
+            console.error('Error al corregir nombres y permisos:', error);
         }
     } catch (error) {
         console.error('Error al corregir codificación de tablas:', error);
