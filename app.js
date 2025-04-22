@@ -2,6 +2,7 @@ const express = require('express');
 const exphbs = require('express-handlebars');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const flash = require('connect-flash');
 const path = require('path');
 const { conectarDB, executeQuery } = require('./database/connection');
@@ -19,6 +20,24 @@ const helpers = require('./helpers/handlebars');
 const facturasExcelRoutes = require('./routes/facturasExcelRoutes');
 
 const app = express();
+
+// Configuración de almacenamiento de sesiones en MySQL para producción
+const sessionStore = new MySQLStore({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'parqueadero',
+    createDatabaseTable: true,
+    schema: {
+        tableName: 'sessions',
+        columnNames: {
+            session_id: 'session_id',
+            expires: 'expires',
+            data: 'data'
+        }
+    }
+});
 
 // Configuración de archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
@@ -94,11 +113,14 @@ app.use(bodyParser.json({ limit: '10mb' }));
 
 // Configuración de sesiones
 app.use(session({
+    key: 'session_cookie_name',
     secret: 'tu_secreto_aqui',
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+        // Desactivado temporalmente para entorno de producción sin HTTPS
+        secure: false, // Cambiar a true cuando se tenga HTTPS configurado
         maxAge: 24 * 60 * 60 * 1000 // 24 horas
     }
 }));
