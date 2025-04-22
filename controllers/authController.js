@@ -1,10 +1,37 @@
 const { connection } = require('../database/connection');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
+
+// Configurar logger para autenticación
+const logAuthEvent = (message, data = {}) => {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+        timestamp,
+        message,
+        ...data
+    };
+    
+    const logsDir = path.join(__dirname, '../logs');
+    if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir);
+    }
+    
+    fs.appendFileSync(
+        path.join(logsDir, 'auth.log'),
+        JSON.stringify(logEntry) + '\n'
+    );
+    
+    console.log(`[AUTH] ${timestamp} - ${message}`);
+};
 
 const authController = {
     // Mostrar formulario de login
     mostrarLogin: (req, res) => {
         if (req.session.usuario) {
+            logAuthEvent('Usuario ya autenticado, redirigiendo a dashboard', {
+                usuario: req.session.usuario.documento
+            });
             return res.redirect('/dashboard');
         }
         res.render('auth/login');
@@ -13,6 +40,12 @@ const authController = {
     // Procesar el login
     login: async (req, res) => {
         const { documento, password } = req.body;
+        logAuthEvent('Intento de inicio de sesión', { 
+            documento,
+            ip: req.ip || req.connection.remoteAddress,
+            userAgent: req.headers['user-agent']
+        });
+        
         try {
             // Ejecutar la consulta SQL
             const [usuarios] = await connection.execute(
@@ -22,21 +55,29 @@ const authController = {
             
             // Verificar si se encontró algún usuario
             if (usuarios.length === 0) {
+                logAuthEvent('Usuario no encontrado', { documento });
                 req.flash('error', 'Usuario no encontrado');
                 return res.redirect('/login');
             }
 
             const usuario = usuarios[0];
+            logAuthEvent('Usuario encontrado', { 
+                documento, 
+                id: usuario.id,
+                rol: usuario.rol_nombre
+            });
 
             // Verificar la contraseña
             const passwordValido = await bcrypt.compare(password, usuario.password);
             if (!passwordValido) {
+                logAuthEvent('Contraseña incorrecta', { documento });
                 req.flash('error', 'Contraseña incorrecta');
                 return res.redirect('/login');
             }
 
             // Verificar si el usuario está activo
             if (!usuario.estado) {
+                logAuthEvent('Usuario inactivo', { documento });
                 req.flash('error', 'Usuario inactivo');
                 return res.redirect('/login');
             }
@@ -51,6 +92,11 @@ const authController = {
                 rol_nombre: usuario.rol_nombre
             };
 
+            logAuthEvent('Información de usuario almacenada en sesión', { 
+                sessionID: req.sessionID,
+                usuario: req.session.usuario
+            });
+
             // Cargar los permisos del usuario
             const [permisos] = await connection.execute(`
                 SELECT DISTINCT m.nombre as modulo, m.ruta, m.icono
@@ -64,9 +110,37 @@ const authController = {
 
             req.session.permisos = permisos;
             
-            // Redireccionar al dashboard
-            return res.redirect('/dashboard');
+            logAuthEvent('Permisos cargados', { 
+                documento,
+                permisos: permisos.map(p => p.modulo)
+            });
+            
+            // Guardar la sesión explícitamente
+            req.session.save((err) => {
+                if (err) {
+                    logAuthEvent('Error al guardar la sesión', { 
+                        error: err.message,
+                        documento
+                    });
+                    console.error('Error al guardar la sesión:', err);
+                    req.flash('error', 'Error al iniciar sesión');
+                    return res.redirect('/login');
+                }
+                
+                logAuthEvent('Inicio de sesión exitoso', { 
+                    documento,
+                    sessionID: req.sessionID
+                });
+                
+                // Redireccionar al dashboard
+                return res.redirect('/dashboard');
+            });
         } catch (error) {
+            logAuthEvent('Error en login', { 
+                error: error.message,
+                stack: error.stack,
+                documento
+            });
             console.error('Error en login:', error);
             req.flash('error', 'Error al iniciar sesión');
             return res.redirect('/login');
@@ -75,8 +149,18 @@ const authController = {
 
     // Cerrar sesión
     logout: (req, res) => {
+        const usuario = req.session.usuario ? req.session.usuario.documento : 'desconocido';
+        
         req.session.destroy((err) => {
-            if (err) console.error('Error al destruir la sesión:', err);
+            if (err) {
+                logAuthEvent('Error al destruir la sesión', { 
+                    error: err.message,
+                    usuario
+                });
+                console.error('Error al destruir la sesión:', err);
+            } else {
+                logAuthEvent('Sesión cerrada correctamente', { usuario });
+            }
             res.redirect('/login');
         });
     }

@@ -1,0 +1,5 @@
+{"timestamp":"2025-04-22T02:56:59.983Z","message":"Intento de inicio de sesión","documento":"1012346553","ip":"::1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
+{"timestamp":"2025-04-22T02:56:59.998Z","message":"Usuario encontrado","documento":"1012346553","id":1,"rol":"SUPER ADMINISTRADOR"}
+{"timestamp":"2025-04-22T02:57:00.103Z","message":"Información de usuario almacenada en sesión","sessionID":"zeZccU-dqLF2TXODXCKV1lWCoTAaGx9B","usuario":{"id":1,"nombres":"FABIAN","apellidos":"GOMEZ","documento":"1012346553","rol_id":1,"rol_nombre":"SUPER ADMINISTRADOR"}}
+{"timestamp":"2025-04-22T02:57:00.113Z","message":"Permisos cargados","documento":"1012346553","permisos":["facturas electrónicas ","Mensualidades","Parqueadero","Permisos","Roles","Tipos de Vehículos","Usuarios","vehículos exentos"]}
+{"timestamp":"2025-04-22T02:57:00.285Z","message":"Inicio de sesión exitoso","documento":"1012346553","sessionID":"zeZccU-dqLF2TXODXCKV1lWCoTAaGx9B"}
