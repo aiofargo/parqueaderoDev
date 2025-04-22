@@ -21,7 +21,9 @@ const dbConfig = {
     port: parseInt(process.env.DB_PORT || '3306', 10),
     waitForConnections: true,
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
-    queueLimit: 0
+    queueLimit: 0,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci'
 };
 
 // Pool de conexiones
@@ -64,6 +66,10 @@ const conectarDB = async () => {
             
             await connection.query(sessionSetupSQL);
             console.log('Tabla de sesiones verificada/creada');
+            
+            // Verificar y corregir codificación de caracteres para tablas importantes
+            await corregirCodificacionTablas(connection);
+            
         } catch (setupError) {
             console.error('Error al configurar tabla de sesiones:', setupError);
         }
@@ -100,6 +106,9 @@ const conectarDB = async () => {
                     
                     await newConnection.query(sessionSetupSQL);
                     console.log('Tabla de sesiones verificada/creada');
+                    
+                    // Verificar y corregir codificación de caracteres para tablas importantes
+                    await corregirCodificacionTablas(newConnection);
                 } catch (setupError) {
                     console.error('Error al configurar tabla de sesiones:', setupError);
                 }
@@ -113,6 +122,68 @@ const conectarDB = async () => {
         } else {
             throw error;
         }
+    }
+};
+
+// Función para corregir la codificación de caracteres en las tablas
+const corregirCodificacionTablas = async (connection) => {
+    try {
+        // Lista de tablas a verificar
+        const tablas = ['modulos', 'roles', 'usuarios', 'permisos_roles'];
+        
+        for (const tabla of tablas) {
+            try {
+                // Verificar si la tabla existe
+                const [tablaExiste] = await connection.query(`
+                    SELECT 1 
+                    FROM information_schema.tables 
+                    WHERE table_schema = DATABASE() 
+                    AND table_name = ?
+                `, [tabla]);
+                
+                if (tablaExiste.length > 0) {
+                    // Convertir tabla a UTF8MB4
+                    await connection.query(`
+                        ALTER TABLE ${tabla} 
+                        CONVERT TO CHARACTER SET utf8mb4 
+                        COLLATE utf8mb4_unicode_ci
+                    `);
+                    console.log(`Tabla ${tabla} convertida a UTF8MB4`);
+                }
+            } catch (error) {
+                console.error(`Error al convertir tabla ${tabla}:`, error);
+            }
+        }
+        
+        // Verificar y corregir orden de los módulos
+        try {
+            await connection.query(`
+                UPDATE modulos 
+                SET 
+                  nombre = REPLACE(nombre, 'Configuracin', 'Configuración'),
+                  nombre = REPLACE(nombre, 'Gestin', 'Gestión'),
+                  nombre = REPLACE(nombre, 'Administracin', 'Administración'),
+                  nombre = REPLACE(nombre, 'Vehiculos', 'Vehículos')
+                WHERE 
+                  nombre LIKE '%Configuracin%' 
+                  OR nombre LIKE '%Gestin%'
+                  OR nombre LIKE '%Administracin%'
+                  OR nombre LIKE '%Vehiculos%'
+            `);
+            
+            // Actualizar orden de los módulos
+            await connection.query(`
+                UPDATE modulos 
+                SET orden = id 
+                WHERE orden IS NULL OR orden = 0
+            `);
+            
+            console.log('Nombres y orden de módulos corregidos');
+        } catch (error) {
+            console.error('Error al corregir nombres y orden de módulos:', error);
+        }
+    } catch (error) {
+        console.error('Error al corregir codificación de tablas:', error);
     }
 };
 
