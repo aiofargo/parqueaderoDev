@@ -100,7 +100,6 @@ const authController = {
                 WHERE pr.rol_id = ?
                 AND pr.estado = 1
                 AND m.estado = 1
-                AND a.estado = 1
             `, [usuario.rol_id]);
 
             req.session.permisosDetallados = permisosDetallados;

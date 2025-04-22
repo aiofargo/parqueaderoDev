@@ -56,6 +56,8 @@ const verificarPermiso = (modulo, accion) => {
         }
 
         try {
+            console.log(`Verificando permiso: Módulo ${modulo}, Acción ${accion} para el usuario ${req.session.usuario.nombres}`);
+            
             const permisos = await executeQuery(`
                 SELECT 1
                 FROM permisos_roles pr
@@ -69,10 +71,12 @@ const verificarPermiso = (modulo, accion) => {
             `, [req.session.usuario.rol_id, modulo, accion]);
 
             if (permisos.length === 0) {
+                console.log(`Permiso denegado: Módulo ${modulo}, Acción ${accion} para el usuario ${req.session.usuario.nombres}`);
                 req.flash('error', 'No tienes permisos para realizar esta acción');
                 return res.redirect('/dashboard');
             }
 
+            console.log(`Permiso concedido: Módulo ${modulo}, Acción ${accion} para el usuario ${req.session.usuario.nombres}`);
             next();
         } catch (error) {
             console.error('Error verificando permisos:', error);
@@ -136,7 +140,6 @@ const cargarPermisosUsuario = async (req, res, next) => {
             WHERE pr.rol_id = ?
             AND pr.estado = 1
             AND m.estado = 1
-            AND a.estado = 1
         `, [req.session.usuario.rol_id]);
 
         req.session.permisos = permisos;

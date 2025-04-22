@@ -149,6 +149,31 @@ const corregirCodificacionTablas = async (connection) => {
                         COLLATE utf8mb4_unicode_ci
                     `);
                     console.log(`Tabla ${tabla} convertida a UTF8MB4`);
+                    
+                    // Si es la tabla acciones, verificar si tiene columna estado
+                    if (tabla === 'acciones') {
+                        try {
+                            // Verificar si existe la columna estado
+                            const [columnaExiste] = await connection.query(`
+                                SELECT 1 
+                                FROM information_schema.columns 
+                                WHERE table_schema = DATABASE() 
+                                AND table_name = 'acciones' 
+                                AND column_name = 'estado'
+                            `);
+                            
+                            if (columnaExiste.length === 0) {
+                                // Agregar columna estado si no existe
+                                await connection.query(`
+                                    ALTER TABLE acciones 
+                                    ADD COLUMN estado TINYINT(1) DEFAULT 1
+                                `);
+                                console.log('Columna estado agregada a la tabla acciones');
+                            }
+                        } catch (columnError) {
+                            console.error('Error al verificar/agregar columna estado en acciones:', columnError);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error(`Error al convertir tabla ${tabla}:`, error);
@@ -210,7 +235,7 @@ const corregirCodificacionTablas = async (connection) => {
                 
                 // Obtener todas las acciones del sistema
                 const [acciones] = await connection.query(`
-                    SELECT id FROM acciones WHERE estado = 1
+                    SELECT id FROM acciones
                 `);
                 console.log(`Se encontraron ${acciones.length} acciones activas`);
                 
