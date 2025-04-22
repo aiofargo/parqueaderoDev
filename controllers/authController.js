@@ -30,7 +30,8 @@ const authController = {
     mostrarLogin: (req, res) => {
         if (req.session.usuario) {
             logAuthEvent('Usuario ya autenticado, redirigiendo a dashboard', {
-                usuario: req.session.usuario.documento
+                usuario: req.session.usuario.documento,
+                sessionID: req.sessionID
             });
             return res.redirect('/dashboard');
         }
@@ -43,7 +44,8 @@ const authController = {
         logAuthEvent('Intento de inicio de sesión', { 
             documento,
             ip: req.ip || req.connection.remoteAddress,
-            userAgent: req.headers['user-agent']
+            userAgent: req.headers['user-agent'],
+            sessionID: req.sessionID
         });
         
         try {
@@ -82,50 +84,89 @@ const authController = {
                 return res.redirect('/login');
             }
 
-            // Almacenar información del usuario en la sesión
-            req.session.usuario = {
-                id: usuario.id,
-                nombres: usuario.nombres,
-                apellidos: usuario.apellidos,
-                documento: usuario.documento,
-                rol_id: usuario.rol_id,
-                rol_nombre: usuario.rol_nombre
+            // Regenerar la sesión para prevenir session fixation
+            const regenerateSession = () => {
+                return new Promise((resolve, reject) => {
+                    req.session.regenerate((err) => {
+                        if (err) {
+                            logAuthEvent('Error regenerando sesión', { 
+                                error: err.message, 
+                                documento 
+                            });
+                            reject(err);
+                            return;
+                        }
+                        logAuthEvent('Sesión regenerada con éxito', { 
+                            documento, 
+                            newSessionID: req.sessionID 
+                        });
+                        resolve();
+                    });
+                });
             };
 
-            logAuthEvent('Información de usuario almacenada en sesión', { 
-                sessionID: req.sessionID,
-                usuario: req.session.usuario
-            });
-
-            // Cargar los permisos del usuario
-            const [permisos] = await connection.execute(`
-                SELECT DISTINCT m.nombre as modulo, m.ruta, m.icono
-                FROM permisos_roles pr
-                INNER JOIN modulos m ON pr.modulo_id = m.id
-                WHERE pr.rol_id = ?
-                AND pr.estado = 1 
-                AND m.estado = 1
-                ORDER BY m.nombre
-            `, [usuario.rol_id]);
-
-            req.session.permisos = permisos;
-            
-            logAuthEvent('Permisos cargados', { 
-                documento,
-                permisos: permisos.map(p => p.modulo)
-            });
-            
-            // Guardar la sesión explícitamente
-            req.session.save((err) => {
-                if (err) {
-                    logAuthEvent('Error al guardar la sesión', { 
-                        error: err.message,
-                        documento
+            // Guardar sesión después de actualizar
+            const saveSession = () => {
+                return new Promise((resolve, reject) => {
+                    req.session.save((err) => {
+                        if (err) {
+                            logAuthEvent('Error guardando sesión', { 
+                                error: err.message, 
+                                documento 
+                            });
+                            reject(err);
+                            return;
+                        }
+                        logAuthEvent('Sesión guardada con éxito', { 
+                            documento, 
+                            sessionID: req.sessionID 
+                        });
+                        resolve();
                     });
-                    console.error('Error al guardar la sesión:', err);
-                    req.flash('error', 'Error al iniciar sesión');
-                    return res.redirect('/login');
-                }
+                });
+            };
+
+            try {
+                // Regenerar la sesión para prevenir session fixation
+                await regenerateSession();
+
+                // Almacenar información del usuario en la sesión
+                req.session.usuario = {
+                    id: usuario.id,
+                    nombres: usuario.nombres,
+                    apellidos: usuario.apellidos,
+                    documento: usuario.documento,
+                    rol_id: usuario.rol_id,
+                    rol_nombre: usuario.rol_nombre,
+                    login_time: new Date().toISOString()
+                };
+
+                logAuthEvent('Información de usuario almacenada en sesión', { 
+                    sessionID: req.sessionID,
+                    usuario: req.session.usuario
+                });
+
+                // Cargar los permisos del usuario
+                const [permisos] = await connection.execute(`
+                    SELECT DISTINCT m.nombre as modulo, m.ruta, m.icono
+                    FROM permisos_roles pr
+                    INNER JOIN modulos m ON pr.modulo_id = m.id
+                    WHERE pr.rol_id = ?
+                    AND pr.estado = 1 
+                    AND m.estado = 1
+                    ORDER BY m.nombre
+                `, [usuario.rol_id]);
+
+                req.session.permisos = permisos;
+                
+                logAuthEvent('Permisos cargados', { 
+                    documento,
+                    permisos: permisos.map(p => p.modulo),
+                    sessionID: req.sessionID
+                });
+                
+                // Guardar la sesión explícitamente
+                await saveSession();
                 
                 logAuthEvent('Inicio de sesión exitoso', { 
                     documento,
@@ -134,7 +175,16 @@ const authController = {
                 
                 // Redireccionar al dashboard
                 return res.redirect('/dashboard');
-            });
+            } catch (sessionError) {
+                logAuthEvent('Error en manejo de sesión', { 
+                    error: sessionError.message,
+                    stack: sessionError.stack,
+                    documento
+                });
+                console.error('Error en manejo de sesión:', sessionError);
+                req.flash('error', 'Error al iniciar sesión, por favor intente de nuevo');
+                return res.redirect('/login');
+            }
         } catch (error) {
             logAuthEvent('Error en login', { 
                 error: error.message,
@@ -150,16 +200,26 @@ const authController = {
     // Cerrar sesión
     logout: (req, res) => {
         const usuario = req.session.usuario ? req.session.usuario.documento : 'desconocido';
+        const sessionID = req.sessionID;
+        
+        logAuthEvent('Iniciando cierre de sesión', { 
+            usuario,
+            sessionID 
+        });
         
         req.session.destroy((err) => {
             if (err) {
                 logAuthEvent('Error al destruir la sesión', { 
                     error: err.message,
-                    usuario
+                    usuario,
+                    sessionID
                 });
                 console.error('Error al destruir la sesión:', err);
             } else {
-                logAuthEvent('Sesión cerrada correctamente', { usuario });
+                logAuthEvent('Sesión cerrada correctamente', { 
+                    usuario,
+                    sessionID 
+                });
             }
             res.redirect('/login');
         });

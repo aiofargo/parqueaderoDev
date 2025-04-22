@@ -31,10 +31,18 @@ const verificarAutenticacion = (req, res, next) => {
         method: req.method,
         sessionID: req.sessionID,
         tieneUsuario: !!req.session.usuario,
+        cookies: req.headers.cookie,
         headers: {
             cookie: req.headers.cookie,
+            'x-forwarded-for': req.headers['x-forwarded-for'],
+            'x-real-ip': req.headers['x-real-ip'],
+            host: req.headers.host,
+            origin: req.headers.origin,
+            referer: req.headers.referer,
             userAgent: req.headers['user-agent']
-        }
+        },
+        secure: req.secure,
+        protocol: req.protocol
     });
 
     if (!req.session) {
@@ -55,10 +63,25 @@ const verificarAutenticacion = (req, res, next) => {
         return res.redirect('/login');
     }
 
+    // Verificar si la sesión tiene todos los datos necesarios del usuario
+    if (!req.session.usuario.id || !req.session.usuario.documento || !req.session.usuario.rol_id) {
+        logAuthEvent('Sesión de usuario incompleta o corrupta', {
+            path: req.path,
+            sessionID: req.sessionID,
+            usuario: req.session.usuario
+        });
+        req.flash('error', 'Sesión inválida. Por favor inicie sesión nuevamente');
+        req.session.destroy(() => {
+            return res.redirect('/login');
+        });
+        return;
+    }
+
     logAuthEvent('Usuario autenticado', {
         documento: req.session.usuario.documento,
         rol: req.session.usuario.rol_nombre,
-        path: req.path
+        path: req.path,
+        sessionID: req.sessionID
     });
     next();
 };
@@ -69,13 +92,15 @@ const verificarAccesoModulo = (modulo) => {
         logAuthEvent('Verificando acceso a módulo', {
             modulo,
             path: req.path,
-            usuario: req.session.usuario ? req.session.usuario.documento : null
+            usuario: req.session.usuario ? req.session.usuario.documento : null,
+            sessionID: req.sessionID
         });
 
         if (!req.session.usuario) {
             logAuthEvent('Usuario no autenticado al verificar módulo', {
                 modulo,
-                path: req.path
+                path: req.path,
+                sessionID: req.sessionID
             });
             req.flash('error', 'Por favor inicie sesión para continuar');
             return res.redirect('/login');
@@ -96,7 +121,8 @@ const verificarAccesoModulo = (modulo) => {
                 logAuthEvent('Acceso denegado a módulo', {
                     modulo,
                     usuario: req.session.usuario.documento,
-                    rol: req.session.usuario.rol_id
+                    rol: req.session.usuario.rol_id,
+                    sessionID: req.sessionID
                 });
                 req.flash('error', 'No tienes acceso a este módulo');
                 return res.redirect('/dashboard');
@@ -105,7 +131,8 @@ const verificarAccesoModulo = (modulo) => {
             logAuthEvent('Acceso concedido a módulo', {
                 modulo,
                 usuario: req.session.usuario.documento,
-                rol: req.session.usuario.rol_nombre
+                rol: req.session.usuario.rol_nombre,
+                sessionID: req.sessionID
             });
             next();
         } catch (error) {
@@ -113,7 +140,8 @@ const verificarAccesoModulo = (modulo) => {
                 error: error.message,
                 stack: error.stack,
                 modulo,
-                usuario: req.session.usuario.documento
+                usuario: req.session.usuario.documento,
+                sessionID: req.sessionID
             });
             console.error('Error verificando acceso al módulo:', error);
             req.flash('error', 'Error al verificar permisos');
@@ -170,7 +198,8 @@ const cargarPermisosUsuario = async (req, res, next) => {
     logAuthEvent('Cargando permisos de usuario', {
         usuario: req.session.usuario.documento,
         rol: req.session.usuario.rol_id,
-        path: req.path
+        path: req.path,
+        sessionID: req.sessionID
     });
 
     try {
@@ -211,17 +240,25 @@ const cargarPermisosUsuario = async (req, res, next) => {
         logAuthEvent('Permisos cargados con éxito', {
             usuario: req.session.usuario.documento,
             permisosCount: permisos.length,
-            grupos: Object.keys(gruposPermisos)
+            grupos: Object.keys(gruposPermisos),
+            sessionID: req.sessionID
         });
 
         // Guardar la sesión explícitamente después de actualizarla
+        req.session.touch(); // Refrescar la expiración de la sesión
         req.session.save(err => {
             if (err) {
                 logAuthEvent('Error al guardar sesión con permisos', {
                     error: err.message,
-                    usuario: req.session.usuario.documento
+                    usuario: req.session.usuario.documento,
+                    sessionID: req.sessionID
                 });
                 console.error('Error al guardar sesión con permisos:', err);
+            } else {
+                logAuthEvent('Sesión guardada con permisos', {
+                    usuario: req.session.usuario.documento,
+                    sessionID: req.sessionID
+                });
             }
             next();
         });
@@ -229,7 +266,8 @@ const cargarPermisosUsuario = async (req, res, next) => {
         logAuthEvent('Error al cargar permisos', {
             error: error.message,
             stack: error.stack,
-            usuario: req.session.usuario.documento
+            usuario: req.session.usuario.documento,
+            sessionID: req.sessionID
         });
         console.error('Error al cargar permisos:', error);
         next(error);

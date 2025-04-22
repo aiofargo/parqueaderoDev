@@ -2,12 +2,13 @@ const express = require('express');
 const exphbs = require('express-handlebars');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const flash = require('connect-flash');
 const path = require('path');
 require('dotenv').config();
 const fs = require('fs');
 const morgan = require('morgan');
-const { conectarDB, executeQuery } = require('./database/connection');
+const { conectarDB, executeQuery, dbConfig } = require('./database/connection');
 const usuariosRoutes = require('./routes/usuarios');
 const rolesRoutes = require('./routes/roles');
 const authRoutes = require('./routes/auth');
@@ -109,7 +110,10 @@ app.use(bodyParser.json({ limit: '10mb' }));
 
 // Configuración de sesiones
 const sessionSecret = process.env.SESSION_SECRET || 'tu_secreto_aqui';
+
+// Configuración de opciones de sesión
 const sessionConfig = {
+    key: 'parqueadero_session',
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -120,10 +124,41 @@ const sessionConfig = {
     }
 };
 
-// En producción, configurar el proxy si es necesario
+// En producción, configurar el proxy y usar MySQL para almacenamiento de sesiones
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1); // Confiar en el primer proxy
     console.log('Modo producción activado - Configuración de sesión segura habilitada');
+    
+    // Opciones para MySQL session store
+    const options = {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        user: dbConfig.user,
+        password: dbConfig.password,
+        database: dbConfig.database,
+        createDatabaseTable: true,
+        schema: {
+            tableName: 'sessions',
+            columnNames: {
+                session_id: 'session_id',
+                expires: 'expires',
+                data: 'data'
+            }
+        }
+    };
+    
+    // Crear tabla de sesiones si no existe
+    console.log('Configurando almacenamiento de sesiones en MySQL');
+    sessionConfig.store = new MySQLStore(options);
+    
+    fs.appendFileSync(
+        path.join(logsDir, 'session.log'),
+        `${new Date().toISOString()} - Sesiones configuradas con MySQL Store: ${JSON.stringify({
+            host: options.host,
+            database: options.database,
+            tableName: options.schema.tableName
+        })}\n`
+    );
 }
 
 app.use(session(sessionConfig));
@@ -139,8 +174,19 @@ app.use((req, res, next) => {
     res.locals.error = req.flash('error');
     
     // Log para seguimiento de sesión
+    const sessionInfo = {
+        sessionID: req.sessionID,
+        tieneUsuario: !!req.session.usuario,
+        path: req.path
+    };
+    
     if (req.path !== '/login' && req.path !== '/logout') {
-        console.log(`[${new Date().toISOString()}] Ruta: ${req.path}, Usuario en sesión: ${req.session.usuario ? req.session.usuario.documento : 'No autenticado'}`);
+        console.log(`[${new Date().toISOString()}] Ruta: ${req.path}, Usuario en sesión: ${req.session.usuario ? req.session.usuario.documento : 'No autenticado'}, SessionID: ${req.sessionID}`);
+        
+        fs.appendFileSync(
+            path.join(logsDir, 'session.log'),
+            `${new Date().toISOString()} - Sesión: ${JSON.stringify(sessionInfo)}\n`
+        );
     }
     
     next();
@@ -174,6 +220,7 @@ app.get('/', (req, res) => {
 
 // Ruta del dashboard
 app.get('/dashboard', verificarAutenticacion, (req, res) => {
+    console.log(`Renderizando dashboard para usuario: ${req.session.usuario.documento}, SessionID: ${req.sessionID}`);
     res.render('dashboard', {
         usuario: req.session.usuario
     });
@@ -184,5 +231,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT} en modo ${process.env.NODE_ENV || 'desarrollo'}`);
     console.log(`Session cookie secure: ${sessionConfig.cookie.secure}`);
+    console.log(`Almacenamiento de sesiones: ${sessionConfig.store ? 'MySQL' : 'MemoryStore'}`);
     conectarDB();
 }); 

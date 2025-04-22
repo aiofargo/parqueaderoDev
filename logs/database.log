@@ -2,3 +2,11 @@
 {"timestamp":"2025-04-22T02:55:19.074Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}
 {"timestamp":"2025-04-22T02:56:17.807Z","message":"Configuración de base de datos cargada","host":"localhost","port":3306,"database":"parqueadero","user":"root","connectionLimit":10,"environment":"desarrollo"}
 {"timestamp":"2025-04-22T02:56:21.552Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}
+{"timestamp":"2025-04-22T03:06:43.461Z","message":"Configuración de base de datos cargada","host":"localhost","port":3306,"database":"parqueadero","user":"root","connectionLimit":10,"environment":"desarrollo"}
+{"timestamp":"2025-04-22T03:06:49.417Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}
+{"timestamp":"2025-04-22T03:07:16.225Z","message":"Configuración de base de datos cargada","host":"localhost","port":3306,"database":"parqueadero","user":"root","connectionLimit":10,"environment":"desarrollo"}
+{"timestamp":"2025-04-22T03:07:21.110Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}
+{"timestamp":"2025-04-22T03:07:55.815Z","message":"Configuración de base de datos cargada","host":"localhost","port":3306,"database":"parqueadero","user":"root","connectionLimit":10,"environment":"desarrollo"}
+{"timestamp":"2025-04-22T03:08:03.451Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}
+{"timestamp":"2025-04-22T03:08:10.747Z","message":"Configuración de base de datos cargada","host":"localhost","port":3306,"database":"parqueadero","user":"root","connectionLimit":10,"environment":"desarrollo"}
+{"timestamp":"2025-04-22T03:08:17.190Z","message":"Conexión inicial exitosa a la base de datos","host":"localhost","port":3306,"database":"parqueadero"}

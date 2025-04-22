@@ -175,5 +175,6 @@ module.exports = {
     getConnection,
     conectarDB,
     executeQuery,
-    connection: pool
+    connection: pool,
+    dbConfig
 }; 
