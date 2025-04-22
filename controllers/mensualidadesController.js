@@ -160,6 +160,20 @@ const mensualidadesController = {
                     }));
             }
 
+            // Si no se proporciona porcentaje_iva, obtenerlo de la tabla tipos_vehiculos
+            let porcentajeIvaFinal = porcentaje_iva;
+            if (!porcentajeIvaFinal) {
+                const [tipoVehiculo] = await conn.query(
+                    'SELECT porcentaje_iva FROM tipos_vehiculos WHERE id = ?',
+                    [tipo_vehiculo_id]
+                );
+                if (tipoVehiculo.length > 0) {
+                    porcentajeIvaFinal = tipoVehiculo[0].porcentaje_iva;
+                } else {
+                    throw new Error('No se pudo obtener el porcentaje de IVA para el tipo de vehículo seleccionado');
+                }
+            }
+
             const fecha_pago = new Date();
             const vigente_desde = fecha_pago;
             const vigente_hasta = new Date(fecha_pago);
@@ -203,7 +217,7 @@ const mensualidadesController = {
                 [
                     resultadoMensualidad.insertId, vigente_desde, vigente_hasta,
                     cantidad_meses, valor_base, valor_iva, valor_total,
-                    descuento, porcentaje_descuento, porcentaje_iva,
+                    descuento, porcentaje_descuento, porcentajeIvaFinal,
                     metodo_pago, referenciaFinal, req.session.usuario.id
                 ]
             );
@@ -225,11 +239,12 @@ const mensualidadesController = {
                     valor_total, 
                     descuento,
                     porcentaje_descuento,
+                    porcentaje_iva,
                     metodo_pago,
                     referencia_pago,
                     usuario_id, 
                     estado
-                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             `, [
                 resultadoPago.insertId,
                 documento_identidad,
@@ -243,6 +258,7 @@ const mensualidadesController = {
                 valor_total,
                 descuento,
                 porcentaje_descuento,
+                porcentajeIvaFinal,
                 metodo_pago,
                 referenciaFinal,
                 req.session.usuario.id
@@ -823,13 +839,13 @@ const mensualidadesController = {
                 INSERT INTO pagos_mensualidades (
                     mensualidad_id, valor_base, valor_iva, valor_total, 
                     descuento, metodo_pago, referencia_pago, fecha_pago,
-                    cantidad_meses, porcentaje_descuento, usuario_id,
-                vigente_desde, vigente_hasta
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)
+                    cantidad_meses, porcentaje_descuento, porcentaje_iva, usuario_id,
+                    vigente_desde, vigente_hasta
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)
             `, [
                 id, valor_base, valor_iva, valor_total, 
                 descuento, metodo_pago, referenciaPago,
-                cantidad_meses, porcentaje_descuento,
+                cantidad_meses, porcentaje_descuento, mensualidad[0].porcentaje_iva,
                 req.session.usuario.id,
                 vigente_desde,
                 vigente_hasta
@@ -860,11 +876,12 @@ const mensualidadesController = {
                     valor_total, 
                     descuento,
                     porcentaje_descuento,
+                    porcentaje_iva,
                     metodo_pago,
                     referencia_pago,
                     usuario_id, 
                     estado
-                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             `, [
                 resultPago.insertId,
                 mensualidad[0].documento_identidad,
@@ -878,6 +895,7 @@ const mensualidadesController = {
                 valor_total,
                 descuento,
                 porcentaje_descuento,
+                mensualidad[0].porcentaje_iva,
                 metodo_pago,
                 referenciaPago,
                     req.session.usuario.id

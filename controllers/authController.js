@@ -14,8 +14,6 @@ const authController = {
     login: async (req, res) => {
         const { documento, password } = req.body;
         try {
-            console.log(`Intento de inicio de sesión para el documento: ${documento}`);
-            
             // Ejecutar la consulta SQL
             const [usuarios] = await connection.execute(
                 'SELECT u.*, r.nombre as rol_nombre FROM usuarios u INNER JOIN roles r ON u.rol_id = r.id WHERE u.documento = ?',
@@ -24,18 +22,15 @@ const authController = {
             
             // Verificar si se encontró algún usuario
             if (usuarios.length === 0) {
-                console.log(`Usuario con documento ${documento} no encontrado`);
                 req.flash('error', 'Usuario no encontrado');
                 return res.redirect('/login');
             }
 
             const usuario = usuarios[0];
-            console.log(`Usuario encontrado: ${usuario.nombres} ${usuario.apellidos}, rol: ${usuario.rol_nombre}`);
 
             // Verificar la contraseña
             try {
                 const passwordValido = await bcrypt.compare(password, usuario.password);
-                console.log(`Resultado de verificación de contraseña: ${passwordValido ? 'Válida' : 'Inválida'}`);
                 if (!passwordValido) {
                     req.flash('error', 'Contraseña incorrecta');
                     return res.redirect('/login');
@@ -48,7 +43,6 @@ const authController = {
 
             // Verificar si el usuario está activo
             if (!usuario.estado) {
-                console.log(`Usuario ${usuario.nombres} ${usuario.apellidos} está inactivo`);
                 req.flash('error', 'Usuario inactivo');
                 return res.redirect('/login');
             }
@@ -81,7 +75,6 @@ const authController = {
             `, [usuario.rol_id]);
 
             req.session.permisos = permisos;
-            console.log(`Inicio de sesión exitoso para ${usuario.nombres} ${usuario.apellidos} con ${permisos.length} permisos`);
             
             // Obtener los permisos específicos (acciones por módulo)
             const [permisosDetallados] = await connection.execute(`
@@ -103,7 +96,6 @@ const authController = {
             `, [usuario.rol_id]);
 
             req.session.permisosDetallados = permisosDetallados;
-            console.log(`Permisos detallados cargados: ${permisosDetallados.length}`);
             
             // Forzar guardado de sesión antes de redireccionar
             req.session.save(err => {
