@@ -22,8 +22,8 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
     queueLimit: 0,
-    charset: 'utf8mb4',
-    collation: 'utf8mb4_unicode_ci'
+    charset: process.env.MYSQL_CHARSET || 'utf8mb4',
+    collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci'
 };
 
 // Pool de conexiones
