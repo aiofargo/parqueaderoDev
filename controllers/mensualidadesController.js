@@ -136,7 +136,8 @@ const mensualidadesController = {
                 valor_iva,
                 valor_total,
                 descuento,
-                porcentaje_iva
+                porcentaje_iva,
+                solicita_factura_electronica
             } = req.body;
 
             // Iniciar transacción
@@ -242,9 +243,10 @@ const mensualidadesController = {
                     porcentaje_iva,
                     metodo_pago,
                     referencia_pago,
+                    solicita_factura_electronica,
                     usuario_id, 
                     estado
-                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             `, [
                 resultadoPago.insertId,
                 documento_identidad,
@@ -261,6 +263,7 @@ const mensualidadesController = {
                 porcentajeIvaFinal,
                 metodo_pago,
                 referenciaFinal,
+                solicita_factura_electronica || 0,
                 req.session.usuario.id
             ]);
 
@@ -790,7 +793,8 @@ const mensualidadesController = {
                 valor_base,
                 valor_iva,
                 valor_total,
-                descuento
+                descuento,
+                solicita_factura_electronica
             } = req.body;
 
             // Validar datos requeridos
@@ -879,9 +883,10 @@ const mensualidadesController = {
                     porcentaje_iva,
                     metodo_pago,
                     referencia_pago,
+                    solicita_factura_electronica,
                     usuario_id, 
                     estado
-                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ) VALUES (?, 'MENSUALIDAD', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             `, [
                 resultPago.insertId,
                 mensualidad[0].documento_identidad,
@@ -898,7 +903,8 @@ const mensualidadesController = {
                 mensualidad[0].porcentaje_iva,
                 metodo_pago,
                 referenciaPago,
-                    req.session.usuario.id
+                solicita_factura_electronica || 0,
+                req.session.usuario.id
             ]);
 
             await conn.commit();

@@ -99,6 +99,11 @@
                                 </div>
                                 <small class="form-text text-muted">Se enviará la factura electrónica a este correo</small>
                             </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="solicita_factura_electronica" name="solicita_factura_electronica" value="1">
+                                <label class="form-check-label" for="solicita_factura_electronica">Solicita Factura Electrónica</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -305,7 +310,8 @@ function confirmarCreacion(event) {
             valor_iva: valorIva,
             valor_total: valorTotal,
             descuento: descuento,
-            porcentaje_iva: document.getElementById('porcentaje_iva_input').value
+            porcentaje_iva: document.getElementById('porcentaje_iva_input').value,
+            solicita_factura_electronica: document.getElementById('solicita_factura_electronica').checked ? 1 : 0
         })
     })
     .then(response => {

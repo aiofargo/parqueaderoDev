@@ -82,6 +82,11 @@
                                     <input type="text" class="form-control" value="{{mensualidad.email}}" readonly>
                                 </div>
                             </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="solicita_factura_electronica" name="solicita_factura_electronica" value="1">
+                                <label class="form-check-label" for="solicita_factura_electronica">Solicita Factura Electrónica</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -294,7 +299,8 @@ function confirmarRenovacion(event) {
         valor_iva: valorIva,
         valor_total: valorTotal,
         descuento: descuento,
-        porcentaje_iva: porcentajeIva
+        porcentaje_iva: porcentajeIva,
+        solicita_factura_electronica: document.getElementById('solicita_factura_electronica').checked ? 1 : 0
     };
 
     // Mostrar indicador de carga
