@@ -1,7 +1,6 @@
-const { connection, executeQuery } = require('../database/connection');
+const { connection } = require('../database/connection');
 const { format } = require('date-fns');
 const { es } = require('date-fns/locale');
-const { getCurrentDate, formatDate, formatDateES, parseDate } = require('../utils/dateUtils');
 
 // Mostrar formulario de entrada
 const mostrarFormularioEntrada = async (req, res) => {
@@ -44,7 +43,7 @@ const verificarPlaca = async (req, res) => {
             return res.json({
                 error: true,
                 mensaje: 'Este vehículo ya se encuentra dentro del parqueadero',
-                fechaEntrada: formatDateES(vehiculoActivo[0].fecha_entrada),
+                fechaEntrada: format(new Date(vehiculoActivo[0].fecha_entrada), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
                 requiereTipoVehiculo: false
             });
         }
@@ -132,7 +131,7 @@ const procesarEntrada = async (req, res) => {
         if (vehiculoActivo.length > 0) {
             throw new Error('Este vehículo ya se encuentra dentro del parqueadero. ' +
                           'Entrada registrada el: ' + 
-                          formatDateES(vehiculoActivo[0].fecha_entrada));
+                          format(new Date(vehiculoActivo[0].fecha_entrada), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }));
         }
 
         // Validar que tipo_vehiculo_id sea un número válido
@@ -193,28 +192,18 @@ const procesarEntrada = async (req, res) => {
         // Preparar datos para el ticket
         const ticketData = {
             placa: placa.trim().toUpperCase(),
-            fechaEntrada: formatDateES(getCurrentDate()),
+            fechaEntrada: format(new Date(), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
             tipoVehiculo: tiposVehiculo[0].nombre,
             tipoCobro,
             mensualidadVence: mensualidades.length > 0 && mensualidades[0].vigente_hasta ? 
-                formatDate(mensualidades[0].vigente_hasta, "d 'de' MMMM 'de' yyyy") : 
+                format(new Date(mensualidades[0].vigente_hasta), "d 'de' MMMM 'de' yyyy", { locale: es }) : 
                 null,
             observaciones: observaciones_entrada || null,
             error: null,
             success: true,
             movimientoId: resultado.insertId,
             numeroTicket: `E-${String(resultado.insertId).padStart(6, '0')}`,
-            session: req.session,
-            vehiculo: {
-                ...tiposVehiculo[0],
-                placa: placa.trim().toUpperCase(),
-                fechaEntrada: formatDateES(getCurrentDate()),
-                tieneVigencia: mensualidades.length > 0 && 
-                               parseDate(mensualidades[0].vigente_hasta) >= getCurrentDate(),
-                fechaVencimiento: mensualidades.length > 0 ? 
-                    formatDate(mensualidades[0].vigente_hasta, "d 'de' MMMM 'de' yyyy") :
-                    null
-            }
+            session: req.session
         };
 
         res.render('parqueadero/ticket', ticketData);

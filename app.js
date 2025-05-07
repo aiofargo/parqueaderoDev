@@ -17,22 +17,7 @@ const permisosRoutes = require('./routes/permisos');
 const facturasElectronicasRoutes = require('./routes/facturas_electronicas');
 const { verificarAutenticacion, verificarAccesoModulo, cargarPermisosUsuario } = require('./middlewares/auth');
 const helpers = require('./helpers/handlebars');
-
-// Cargar rutas de facturas Excel con manejo de errores
-let facturasExcelRoutes;
-try {
-    facturasExcelRoutes = require('./routes/facturasExcelRoutes');
-} catch (error) {
-    console.error('Error al cargar rutas de facturas Excel:', error.message);
-    // Crear un router alternativo para manejar los errores
-    facturasExcelRoutes = express.Router();
-    facturasExcelRoutes.all('*', (req, res) => {
-        res.status(503).json({
-            success: false,
-            mensaje: 'Esta funcionalidad no está disponible. Por favor, ejecute "npm install exceljs" e intente nuevamente.'
-        });
-    });
-}
+const facturasExcelRoutes = require('./routes/facturasExcelRoutes');
 
 const app = express();
 

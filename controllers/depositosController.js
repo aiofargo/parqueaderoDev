@@ -1,6 +1,5 @@
-const { connection, executeQuery } = require('../database/connection');
+const { connection } = require('../database/connection');
 const { format } = require('date-fns');
-const { getCurrentDate, formatDate } = require('../utils/dateUtils');
 
 // Obtener el efectivo en caja desde el último depósito
 const obtenerEfectivoEnCaja = async (req, res) => {
@@ -98,7 +97,7 @@ const mostrarVistaPrevia = async (req, res) => {
             movimientos,
             movimientosPorTipo,
             fechaInicio,
-            fechaFin: getCurrentDate(),
+            fechaFin: new Date(),
             montoTotal,
             usuario: req.session.usuario
         });
@@ -152,7 +151,7 @@ const confirmarDeposito = async (req, res) => {
         
         const usuario_id = req.session.usuario.id;
         console.log('ID de usuario:', usuario_id);
-        const fechaActual = formatDate(getCurrentDate(), 'yyyy-MM-dd HH:mm:ss');
+        const fechaActual = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
 
         // Obtener movimientos pendientes de depositar
         console.log('Consultando movimientos pendientes...');
@@ -187,7 +186,7 @@ const confirmarDeposito = async (req, res) => {
 
         const fechaInicio = ultimoDeposito.length > 0 
             ? ultimoDeposito[0].fecha_deposito 
-            : formatDate(new Date(0), 'yyyy-MM-dd HH:mm:ss');
+            : format(new Date(0), 'yyyy-MM-dd HH:mm:ss');
 
         console.log('Insertando registro de depósito...');
         // Crear el registro de depósito
@@ -316,7 +315,7 @@ const obtenerDeposito = async (req, res) => {
             deposito: deposito[0],
             movimientos,
             movimientosPorTipo,
-            now: getCurrentDate()
+            now: new Date()
         });
 
     } catch (error) {
@@ -416,7 +415,7 @@ const mostrarDepositoModal = async (req, res) => {
             movimientos,
             movimientosPorTipo,
             fechaInicio,
-            fechaFin: getCurrentDate(),
+            fechaFin: new Date(),
             montoTotal,
             usuario: req.session.usuario
         });
