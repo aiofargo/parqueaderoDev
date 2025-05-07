@@ -2,9 +2,19 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const facturasExcelController = require('../controllers/facturasExcelController');
 const fs = require('fs');
 const { executeQuery } = require('../database/connection');
+
+// Verificar si el módulo exceljs está disponible
+let excelModuleAvailable = true;
+let facturasExcelController;
+
+try {
+    facturasExcelController = require('../controllers/facturasExcelController');
+} catch (error) {
+    console.error('Error al cargar el controlador de Excel. El módulo exceljs no está instalado.');
+    excelModuleAvailable = false;
+}
 
 // Configuración de multer para subida de archivos
 const storage = multer.diskStorage({
@@ -33,8 +43,21 @@ const upload = multer({
     }
 });
 
+// Función para manejar rutas cuando el módulo no está disponible
+const moduleNotAvailableHandler = (req, res) => {
+    res.status(503).json({
+        success: false,
+        mensaje: 'Esta funcionalidad no está disponible. El módulo ExcelJS no está instalado. Por favor, ejecute "npm install exceljs" e intente nuevamente.'
+    });
+};
+
 // Ruta para descargar Excel
 router.get('/descargar', async (req, res) => {
+    // Si el módulo no está disponible, devolver mensaje de error
+    if (!excelModuleAvailable) {
+        return moduleNotAvailableHandler(req, res);
+    }
+    
     let archivoTemporal = null;
     
     try {
@@ -100,6 +123,11 @@ router.get('/descargar', async (req, res) => {
 
 // Ruta para cargar resultados
 router.post('/cargar', upload.single('archivo'), async (req, res) => {
+    // Si el módulo no está disponible, devolver mensaje de error
+    if (!excelModuleAvailable) {
+        return moduleNotAvailableHandler(req, res);
+    }
+    
     let archivoTemporal = null;
     
     try {
