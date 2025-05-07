@@ -23,17 +23,29 @@ const dbConfig = {
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
     queueLimit: 0,
     charset: process.env.MYSQL_CHARSET || 'utf8mb4',
-    collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci',
-    timezone: process.env.DB_TIMEZONE || 'America/Bogota',
+    // Estas opciones son las que causan los warnings
+    // collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci',
+    // timezone: process.env.DB_TIMEZONE || 'America/Bogota',
+};
+
+// Configurar la zona horaria a nivel de sesión después de conectar
+const configurarZonaHoraria = async (connection) => {
+    try {
+        await connection.execute("SET time_zone = '-05:00'"); // Zona horaria de Bogotá (UTC-5)
+        console.log('Zona horaria configurada a UTC-5 (Bogotá)');
+    } catch (error) {
+        console.error('Error al configurar zona horaria:', error);
+    }
 };
 
 // Pool de conexiones
 let pool = mysql.createPool(dbConfig);
 
-// Función para obtener una conexión del pool
+// Obtener una conexión y configurar zona horaria
 const getConnection = async () => {
     try {
         const connection = await pool.getConnection();
+        await configurarZonaHoraria(connection);
         console.log('Conexión exitosa a la base de datos');
         return connection;
     } catch (error) {
@@ -55,6 +67,9 @@ const conectarDB = async () => {
     try {
         const connection = await pool.getConnection();
         console.log(`Conexión exitosa a la base de datos MySQL (${dbConfig.host}:${dbConfig.port})`);
+        
+        // Configurar zona horaria
+        await configurarZonaHoraria(connection);
         
         // Crear tabla de sesiones si no existe directamente con consulta SQL
         try {
@@ -95,6 +110,9 @@ const conectarDB = async () => {
                 pool = mysql.createPool(dbConfig);
                 const newConnection = await pool.getConnection();
                 console.log(`Conexión exitosa a la base de datos MySQL (${dbConfig.host}:3306)`);
+                
+                // Configurar zona horaria
+                await configurarZonaHoraria(newConnection);
                 
                 // Crear tabla de sesiones si no existe directamente con consulta SQL
                 try {

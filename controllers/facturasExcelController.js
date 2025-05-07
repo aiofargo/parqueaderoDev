@@ -1,7 +1,13 @@
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
-const ExcelJS = require('exceljs');
+// Intentar importar ExcelJS, pero continuar si no está disponible
+let ExcelJS;
+try {
+    ExcelJS = require('exceljs');
+} catch (error) {
+    console.warn('ExcelJS no está instalado. Se usará XLSX para todas las operaciones.');
+}
 const { executeQuery } = require('../database/connection');
 const { getCurrentDate, formatDate } = require('../utils/dateUtils');
 
