@@ -1,4 +1,5 @@
 const { connection } = require('../database/connection');
+const { parseDate } = require('../utils/dateUtils');
 
 const vehiculosExentosController = {
     // Obtener todos los vehículos exentos
@@ -63,7 +64,7 @@ const vehiculosExentosController = {
             } = req.body;
 
             // Validar fechas
-            if (new Date(fecha_inicio) > new Date(fecha_fin)) {
+            if (parseDate(fecha_inicio) > parseDate(fecha_fin)) {
                 req.flash('error', 'La fecha de fin no puede ser anterior a la fecha de inicio');
                 return res.redirect('/vehiculos_exentos/crear');
             }

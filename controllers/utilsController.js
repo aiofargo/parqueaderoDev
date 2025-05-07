@@ -1,13 +1,15 @@
 const { connection } = require('../database/connection');
 const { format } = require('date-fns');
 const { es } = require('date-fns/locale');
+const { executeQuery } = require('../database/connection');
+const { getCurrentDate, formatDate } = require('../utils/dateUtils');
 
 // Obtener estadísticas del parqueadero
 const obtenerEstadisticas = async (req, res) => {
     try {
         // Parámetros de filtro para API
-        const fechaInicio = req.query.fechaInicio || format(new Date(), 'yyyy-MM-dd');
-        const fechaFin = req.query.fechaFin || format(new Date(), 'yyyy-MM-dd');
+        const fechaInicio = req.query.fechaInicio || formatDate(getCurrentDate(), 'yyyy-MM-dd');
+        const fechaFin = req.query.fechaFin || formatDate(getCurrentDate(), 'yyyy-MM-dd');
         const horaInicio = req.query.horaInicio || '00:00';
         const horaFin = req.query.horaFin || '23:59';
         

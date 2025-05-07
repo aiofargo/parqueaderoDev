@@ -1,5 +1,7 @@
 const { connection } = require('../database/connection');
 const { format } = require('date-fns');
+const { executeQuery } = require('../database/connection');
+const { getCurrentDate, formatDate } = require('../utils/dateUtils');
 
 // Listar todas las facturas
 const listarFacturas = async (req, res) => {
@@ -57,7 +59,7 @@ const marcarFacturaCreada = async (req, res) => {
             });
         }
         
-        const fechaActual = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const fechaActual = formatDate(getCurrentDate(), 'yyyy-MM-dd HH:mm:ss');
         
         await connection.execute(`
             UPDATE cli_factura_e 
@@ -105,7 +107,7 @@ const actualizarResultados = async (req, res) => {
                 }
                 
                 // Formatear la fecha
-                const fechaFormateada = fecha_creacion || format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+                const fechaFormateada = fecha_creacion || formatDate(getCurrentDate(), 'yyyy-MM-dd HH:mm:ss');
                 
                 // Actualizar en la base de datos
                 await connection.execute(`

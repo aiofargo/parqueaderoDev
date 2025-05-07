@@ -1,4 +1,5 @@
 const { connection } = require('../database/connection');
+const { getCurrentDate, formatDate, formatDateES, parseDate, addMonthsToDate } = require('../utils/dateUtils');
 
 const mensualidadesController = {
     // Obtener todas las mensualidades
@@ -83,11 +84,7 @@ const mensualidadesController = {
 
                 if (vehiculoExento.length > 0) {
                     return res.status(400).send('Este vehículo está exento de pago hasta ' + 
-                        new Date(vehiculoExento[0].fecha_fin).toLocaleDateString('es-CO', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        }));
+                        formatDate(vehiculoExento[0].fecha_fin, "d 'de' MMMM 'de' yyyy"));
                 }
 
                 // Buscar la mensualidad más reciente para esta placa
@@ -154,11 +151,7 @@ const mensualidadesController = {
 
             if (vehiculoExento.length > 0) {
                 throw new Error('Este vehículo está exento de pago hasta ' + 
-                    new Date(vehiculoExento[0].fecha_fin).toLocaleDateString('es-CO', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    }));
+                    formatDate(vehiculoExento[0].fecha_fin, "d 'de' MMMM 'de' yyyy"));
             }
 
             // Si no se proporciona porcentaje_iva, obtenerlo de la tabla tipos_vehiculos
@@ -175,10 +168,9 @@ const mensualidadesController = {
                 }
             }
 
-            const fecha_pago = new Date();
+            const fecha_pago = getCurrentDate();
             const vigente_desde = fecha_pago;
-            const vigente_hasta = new Date(fecha_pago);
-            vigente_hasta.setMonth(vigente_hasta.getMonth() + parseInt(cantidad_meses));
+            const vigente_hasta = addMonthsToDate(vigente_desde, parseInt(cantidad_meses));
 
             // Generar referencia para pagos en efectivo
             let referenciaFinal = referencia_pago;
@@ -336,11 +328,7 @@ const mensualidadesController = {
             };
 
             const formatearFecha = (fecha) => {
-                return fecha ? new Date(fecha).toLocaleDateString('es-CO', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }) : '';
+                return fecha ? formatDate(fecha, "d 'de' MMMM 'de' yyyy") : '';
             };
 
             const historialFormateado = historialPagos.map(pago => ({
@@ -406,11 +394,7 @@ const mensualidadesController = {
 
             if (vehiculoExento.length > 0) {
                 return res.status(400).send('Este vehículo está exento de pago hasta ' + 
-                    new Date(vehiculoExento[0].fecha_fin).toLocaleDateString('es-CO', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    }));
+                    formatDate(vehiculoExento[0].fecha_fin, "d 'de' MMMM 'de' yyyy"));
             }
 
             // Obtener la tarifa actual del tipo de vehículo
@@ -419,10 +403,9 @@ const mensualidadesController = {
                 [mensualidad[0].tipo_vehiculo_id]
             );
 
-            const fecha_pago = new Date();
-            const vigente_desde = new Date(mensualidad[0].vigente_hasta);
-            const vigente_hasta = new Date(vigente_desde);
-            vigente_hasta.setDate(vigente_hasta.getDate() + 30);
+            const fecha_pago = getCurrentDate();
+            const vigente_desde = parseDate(mensualidad[0].vigente_hasta);
+            const vigente_hasta = addMonthsToDate(vigente_desde, parseInt(cantidad_meses));
 
             const valor_total = tipoVehiculo[0].tarifa_mensual;
             // Calcular el IVA incluido en el valor total
@@ -493,24 +476,15 @@ const mensualidadesController = {
 
             if (vehiculoExento.length > 0) {
                 return res.status(400).send('Este vehículo está exento de pago hasta ' + 
-                    new Date(vehiculoExento[0].fecha_fin).toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-                    }));
+                    formatDate(vehiculoExento[0].fecha_fin, "d 'de' MMMM 'de' yyyy"));
             }
 
             // Calcular próxima fecha de vencimiento
-            const fechaVigenciaActual = new Date(mensualidad[0].vigente_hasta);
-            const proximoVencimiento = new Date(fechaVigenciaActual);
-            proximoVencimiento.setMonth(proximoVencimiento.getMonth() + 1);
+            const fechaVigenciaActual = parseDate(mensualidad[0].vigente_hasta);
+            const proximoVencimiento = addMonthsToDate(fechaVigenciaActual, parseInt(cantidad_meses));
 
             // Formatear fechas para mostrar
-            const proximoVencimientoFormateado = proximoVencimiento.toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+            const proximoVencimientoFormateado = formatDate(proximoVencimiento, "d 'de' MMMM 'de' yyyy");
 
             // Usar el formato de fecha ISO para la vista
             mensualidad[0].vigente_hasta = mensualidad[0].vigente_hasta_formato;
@@ -554,9 +528,8 @@ const mensualidadesController = {
                     throw new Error('Tipo de vehículo no encontrado');
                 }
 
-                vigente_desde = new Date();
-                vigente_hasta = new Date(vigente_desde);
-                vigente_hasta.setMonth(vigente_hasta.getMonth() + cantidadMeses);
+                vigente_desde = getCurrentDate();
+                vigente_hasta = addMonthsToDate(vigente_desde, cantidadMeses);
 
                 mensualidad = [{
                     placa: req.body.placa,
@@ -586,15 +559,14 @@ const mensualidadesController = {
                 }
 
                 // Calcular fechas de vigencia para renovación
-                const fechaActual = new Date();
-                const fechaVencimientoActual = new Date(mensualidad[0].vigente_hasta);
+                const fechaActual = getCurrentDate();
+                const fechaVencimientoActual = parseDate(mensualidad[0].vigente_hasta);
 
                 // Si la mensualidad actual aún no ha vencido, la nueva vigencia comienza desde el vencimiento
                 vigente_desde = fechaVencimientoActual > fechaActual ? 
-                    new Date(fechaVencimientoActual) : new Date(fechaActual);
+                    fechaVencimientoActual : fechaActual;
 
-                vigente_hasta = new Date(vigente_desde);
-                vigente_hasta.setMonth(vigente_hasta.getMonth() + cantidadMeses);
+                vigente_hasta = addMonthsToDate(vigente_desde, parseInt(cantidad_meses));
 
                 // Verificar si hay traslapes con otras mensualidades
                 const [mensualidadesSolapadas] = await connection.query(`
@@ -648,16 +620,8 @@ const mensualidadesController = {
             };
 
             // Formatear fechas para mostrar
-            const vigente_desde_formato = vigente_desde.toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            const vigente_hasta_formato = vigente_hasta.toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+            const vigente_desde_formato = formatDate(vigente_desde, "d 'de' MMMM 'de' yyyy");
+            const vigente_hasta_formato = formatDate(vigente_hasta, "d 'de' MMMM 'de' yyyy");
 
             // Generar número de recibo si es pago en efectivo
             let referenciaFinal = referencia_pago;
@@ -694,11 +658,7 @@ const mensualidadesController = {
                 valorTotalSinDescuento: formatearNumero(valorTotalSinDescuento),
                 vigente_desde: vigente_desde_formato,
                 vigente_hasta: vigente_hasta_formato,
-                fechaActual: new Date().toLocaleDateString('es-CO', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }),
+                fechaActual: formatDate(getCurrentDate(), "d 'de' MMMM 'de' yyyy"),
                 usuario: req.session.usuario,
                 es_nueva: es_nueva === '1'
             });
@@ -742,11 +702,7 @@ const mensualidadesController = {
 
             // Formatear fechas
             const formatearFecha = (fecha) => {
-                return new Date(fecha).toLocaleDateString('es-CO', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
+                return formatDate(fecha, "d 'de' MMMM 'de' yyyy");
             };
 
             res.render('mensualidades/ticket', {
@@ -831,12 +787,11 @@ const mensualidadesController = {
             }
 
             // Calcular nueva fecha de vencimiento
-                const fechaActual = new Date();
-                const fechaVencimientoActual = new Date(mensualidad[0].vigente_hasta);
+                const fechaActual = getCurrentDate();
+                const fechaVencimientoActual = parseDate(mensualidad[0].vigente_hasta);
             const vigente_desde = fechaVencimientoActual > fechaActual ? 
-                    new Date(fechaVencimientoActual) : new Date(fechaActual);
-            const vigente_hasta = new Date(vigente_desde);
-            vigente_hasta.setMonth(vigente_hasta.getMonth() + parseInt(cantidad_meses));
+                    fechaVencimientoActual : fechaActual;
+            const vigente_hasta = addMonthsToDate(vigente_desde, parseInt(cantidad_meses));
 
             // Registrar el pago
             const [resultPago] = await conn.query(`

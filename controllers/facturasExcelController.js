@@ -1,6 +1,9 @@
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
+const ExcelJS = require('exceljs');
+const { executeQuery } = require('../database/connection');
+const { getCurrentDate, formatDate } = require('../utils/dateUtils');
 
 class FacturasExcelController {
     constructor() {
@@ -64,7 +67,7 @@ class FacturasExcelController {
             XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
 
             // Generar nombre de archivo
-            const fechaArchivo = new Date().toISOString().split('T')[0];
+            const fechaArchivo = formatDate(getCurrentDate(), 'yyyy-MM-dd');
             const nombreArchivo = `facturas_electronicas_${fechaArchivo}.xlsx`;
             const rutaArchivo = path.join(__dirname, '..', 'uploads', nombreArchivo);
 
@@ -117,7 +120,7 @@ class FacturasExcelController {
                     id: id?.toString(),
                     placa: placa?.toString(),
                     estado_factura: estado.includes('CREADA') ? 'CREADA' : 'PENDIENTE',
-                    fecha_creacion: new Date().toISOString()
+                    fecha_creacion: formatDate(getCurrentDate())
                 };
             }).filter(r => r.id || r.placa); // Filtrar registros válidos
 

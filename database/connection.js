@@ -23,7 +23,8 @@ const dbConfig = {
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
     queueLimit: 0,
     charset: process.env.MYSQL_CHARSET || 'utf8mb4',
-    collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci'
+    collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci',
+    timezone: process.env.DB_TIMEZONE || 'America/Bogota',
 };
 
 // Pool de conexiones

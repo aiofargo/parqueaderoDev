@@ -1,6 +1,8 @@
-const { connection } = require('../database/connection');
+const { connection, executeQuery } = require('../database/connection');
 const { format } = require('date-fns');
 const { es } = require('date-fns/locale');
+const { differenceInMinutes, differenceInHours } = require('date-fns');
+const { getCurrentDate, formatDate, formatDateES, parseDate } = require('../utils/dateUtils');
 
 // Mostrar formulario de salida
 const mostrarFormularioSalida = async (req, res) => {
@@ -39,10 +41,10 @@ const mostrarFormularioSalida = async (req, res) => {
             id: vehiculo.id,
             placa: vehiculo.placa,
             tipo: vehiculo.tipo_vehiculo,
-            fecha_entrada: format(new Date(vehiculo.fecha_entrada), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
+            fecha_entrada: formatDateES(vehiculo.fecha_entrada),
             tipo_cobro: vehiculo.tipo_cobro,
             fecha_vencimiento: vehiculo.fecha_vencimiento ? 
-                format(new Date(vehiculo.fecha_vencimiento), "d 'de' MMMM 'de' yyyy", { locale: es }) : 
+                formatDateES(vehiculo.fecha_vencimiento) : 
                 null
         }));
 
@@ -105,8 +107,8 @@ const verificarVehiculoSalida = async (req, res) => {
             });
         }
 
-        const fechaEntrada = new Date(movimiento[0].fecha_entrada);
-        const fechaSalida = new Date();
+        const fechaEntrada = parseDate(movimiento[0].fecha_entrada);
+        const fechaSalida = getCurrentDate();
 
         // Calcular tiempo total en minutos
         const tiempoOriginal = Math.ceil((fechaSalida - fechaEntrada) / (1000 * 60));
@@ -189,8 +191,8 @@ const verificarVehiculoSalida = async (req, res) => {
             movimientoId: movimiento[0].id,
             placa: movimiento[0].placa,
             tipoVehiculo: movimiento[0].tipo_vehiculo,
-            fechaEntrada: format(fechaEntrada, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
-            fechaSalida: format(fechaSalida, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
+            fechaEntrada: formatDateES(movimiento[0].fecha_entrada),
+            fechaSalida: formatDateES(fechaSalida),
             tiempoTotal: {
                 dias: Math.floor(tiempoACobrar / 1440),
                 horas: Math.floor((tiempoACobrar % 1440) / 60),
@@ -210,7 +212,7 @@ const verificarVehiculoSalida = async (req, res) => {
             descuentoPlaza,
             mostrarFactura: movimiento[0].tipo_cobro === 'TIEMPO',
             vencimiento: movimiento[0].fecha_vencimiento ? 
-                format(new Date(movimiento[0].fecha_vencimiento), "d 'de' MMMM 'de' yyyy", { locale: es }) : 
+                formatDateES(movimiento[0].fecha_vencimiento) : 
                 null
         };
 
@@ -259,8 +261,8 @@ const procesarSalida = async (req, res) => {
         }
 
         const movimiento = movimientos[0];
-        const fechaEntrada = new Date(movimiento.fecha_entrada);
-        const fechaSalida = new Date();
+        const fechaEntrada = parseDate(movimiento.fecha_entrada);
+        const fechaSalida = getCurrentDate();
 
         // Calcular tiempo total en minutos
         const tiempoOriginal = Math.ceil((fechaSalida - fechaEntrada) / (1000 * 60));
@@ -447,8 +449,8 @@ const procesarSalida = async (req, res) => {
         const ticketData = {
             placa: movimiento.placa,
             tipoVehiculo: movimiento.tipo_vehiculo,
-            fechaEntrada: format(fechaEntrada, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
-            fechaSalida: format(fechaSalida, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es }),
+            fechaEntrada: formatDateES(movimiento.fecha_entrada),
+            fechaSalida: formatDateES(fechaSalida),
             tiempoTotal: {
                 dias: Math.floor(tiempoACobrar / 1440),
                 horas: Math.floor((tiempoACobrar % 1440) / 60),
@@ -475,7 +477,7 @@ const procesarSalida = async (req, res) => {
             observacionesSalida: req.body.observaciones_salida,
             requiereFactura: requiereFactura === 'on' ? true : false,
             vencimiento: movimiento.fecha_vencimiento ? 
-                format(new Date(movimiento.fecha_vencimiento), "d 'de' MMMM 'de' yyyy", { locale: es }) : 
+                formatDateES(movimiento.fecha_vencimiento) : 
                 null
         };
 
