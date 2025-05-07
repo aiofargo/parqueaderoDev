@@ -24,7 +24,7 @@ const dbConfig = {
     queueLimit: 0,
     charset: process.env.MYSQL_CHARSET || 'utf8mb4',
     collation: process.env.MYSQL_COLLATION || 'utf8mb4_unicode_ci',
-    timezone: process.env.DB_TIMEZONE || 'America/Bogota',
+    timezone: process.env.DB_TIMEZONE || '-05:00',
 };
 
 // Pool de conexiones
